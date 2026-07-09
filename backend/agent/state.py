@@ -9,6 +9,7 @@ from .models import TravelPlan
 
 class TravelAgentState(TypedDict):
     """Graph state with complete conversation context."""
+    
     messages: Annotated[List[AnyMessage], operator.add]
     travel_plan: Optional[TravelPlan]
     user_preferences: Optional[Dict[str, Any]]

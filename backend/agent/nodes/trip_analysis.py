@@ -1,9 +1,7 @@
-"""Graph nodes: enhanced_travel_analysis, call_model, synthesize_results, generate_travel_packages."""
+"""Graph node: trip_analysis. """
 
 import traceback
 from datetime import datetime
-from typing import Dict, List
-
 from langchain_core.messages import AIMessage
 
 from backend.config import llm

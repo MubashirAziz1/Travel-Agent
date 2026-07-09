@@ -1,19 +1,18 @@
-"""Graph nodes: enhanced_travel_analysis, call_model, synthesize_results, generate_travel_packages."""
+"""Graph node: plan_execute"""
 
 import asyncio
 import json
 import traceback
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict
 
 from langchain_core.messages import AIMessage, ToolMessage
 
-from backend.config import llm
-from ..utils.helpers import get_representative_options, calculate_default_dates
+from backend.utils import calculate_default_dates
 from ..state import TravelAgentState
 
 
-async def plan_execute(state: TravelAgentState) -> dict:
+async def plan_execute(state: TravelAgentState) -> Dict:
     """Tool preparation and execution node."""
 
     print("NODE: Plan & Execution")
