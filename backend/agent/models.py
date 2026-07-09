@@ -5,27 +5,39 @@ from pydantic import BaseModel, Field
 
 
 
-
 class FlightOption(BaseModel):
     """Structured flight offer data."""
+    
     airline: str = Field(description="Airline name")
     price: str = Field(description="Total flight cost")
     departure_time: str = Field(description="Departure time (YYYY-MM-DDTHH:MM:SS)")
     arrival_time: str = Field(description="Arrival time (YYYY-MM-DDTHH:MM:SS)")
     duration: Optional[str] = Field(description="Flight duration", default=None)
 
+class HotelOption(BaseModel):
+    """Structured hotel offer data."""
+
+    name: str = Field(description="Hotel name")
+    category: str = Field(description="Star rating, e.g., '5EST' for 5-star")
+    price_per_night: str = Field(description="Price per night")
+    source: str = Field(description="Data source (e.g., 'Amadeus', 'Hotelbeds')")
+    rating: Optional[float] = Field(description="Hotel rating", default=None)
+
 
 class TravelPackage(BaseModel):
     """Complete travel package including flight data."""
+
     name: str = Field(description="Package name, e.g., 'Smart Explorer'")
     grade: Literal["Budget", "Balanced", "Premium"] = Field(description="Package tier")
     total_cost: float = Field(description="Total package cost in USD")
     budget_comment: str = Field(description="Budget comparison comment")
     selected_flight: FlightOption = Field(description="Selected flight option")
+    selected_hotel: HotelOption = Field(description="Selected hotel option")
 
 
 class TravelPlan(BaseModel):
     """Structured travel plan extracted from user request."""
+
     origin: Optional[str] = Field(None, description="Origin city or airport code")
     destination: str = Field(..., description="Destination city or airport code")
     departure_date: Optional[str] = Field(None, description="Departure date (YYYY-MM-DD)")
@@ -36,3 +48,7 @@ class TravelPlan(BaseModel):
     departure_time_pref: Optional[str] = Field(None, description="Preferred departure time")
     arrival_time_pref: Optional[str] = Field(None, description="Preferred arrival time")
     total_budget: Optional[float] = Field(None, description="Total budget in USD")
+    user_intent: Literal["full_plan", "flights_only", "hotels_only"] = Field(
+        "full_plan",
+        description="User's primary goal",
+    )
