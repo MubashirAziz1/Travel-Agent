@@ -2,9 +2,12 @@ import asyncio
 import logging
 import time
 from typing import Any, Dict, List, Optional
+from typing import List, Dict, Optional
+from pydantic import BaseModel, Field
 
 import httpx
 
+from backend.agent.models import FlightOption
 from backend.config import DuffelSettings
 # from src.exceptions import (
 #     DuffelAPIException,
@@ -87,7 +90,47 @@ class DuffelClient:
             response = await client.post(url,headers=headers,json=payload)
             response.raise_for_status()
         
-        return response.json()
+        offers = self.parse_and_prepare_offers(response.json())
+        
+        return offers
+    
+
+
+    def parse_and_prepare_offers(self, response_data: dict) -> List[Dict]:
+        """Parse Duffel flight search response into sortable format."""
+        if 'data' not in response_data or 'offers' not in response_data['data'] or not response_data['data']['offers']:
+            return []
+
+        prepared_offers = []
+
+        for offer in response_data['data']['offers']:
+            try:
+                price_float = float(offer['total_amount'])
+
+                # Duffel uses 'slices' instead of 'itineraries'
+                slice_item = offer['slices'][0]
+                
+                # Get first and last segment for departure/arrival times
+                first_segment = slice_item['segments'][0]
+                last_segment = slice_item['segments'][-1]
+
+                # Use marketing carrier name as the airline (the one selling the ticket)
+                airline_name = first_segment['marketing_carrier']['name']
+
+                option_obj = FlightOption(
+                    airline=airline_name,
+                    price=f"{offer['total_amount']} {offer['total_currency']}",
+                    departure_time=first_segment['departing_at'],
+                    arrival_time=last_segment['arriving_at'],
+                    duration=slice_item.get('duration'),
+                )
+
+                prepared_offers.append({"price_numeric": price_float, "option_object": option_obj})
+            except (ValueError, KeyError, IndexError, TypeError) as e:
+                print(f"Skipping malformed flight offer: {e}")
+                continue
+
+        return prepared_offers
 
 
 
