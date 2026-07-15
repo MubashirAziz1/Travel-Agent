@@ -3,7 +3,8 @@
 from datetime import datetime, timedelta
 from typing import List, Dict
 
-from agent.models import FlightOption, TravelPlan
+
+from backend.agent.models import FlightOption, TravelPlan
 
 
 def parse_and_prepare_offers(response_data: dict) -> List[Dict]:
@@ -107,3 +108,4 @@ def calculate_default_dates(travel_plan: TravelPlan) -> tuple:
             return_date = default_checkout.strftime('%Y-%m-%d')
 
     return departure_date, return_date
+

@@ -9,10 +9,10 @@ async def main():
     client = DuffelClient(settings)
 
     try:
-        response = await client.offer_requests(
-            origin="LHR",
-            destination="JFK",
-            departure_date="2026-07-12",
+        response = await client.search_offers(
+            origin="LHE",
+            destination="DXB",
+            departure_date="2026-07-16",
         )
 
         print("Success!")
