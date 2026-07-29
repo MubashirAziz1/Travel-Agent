@@ -5,6 +5,7 @@ import re
 from typing import Any, Dict, List, Optional
 from typing import List, Dict, Optional
 from pydantic import BaseModel, Field
+from isodate import parse_duration
 
 import httpx
 
@@ -154,7 +155,7 @@ class DuffelClient:
                     price=f"{offer['total_amount']} {offer['total_currency']}",
                     departure_time=first_segment['departing_at'],
                     arrival_time=last_segment['arriving_at'],
-                    duration=self._parse_time(time_duration),
+                    duration=time_duration,
                 )
 
                 prepared_offers.append({"price_numeric": price_float, "option_object": option_obj})
@@ -175,32 +176,24 @@ class DuffelClient:
             PT45M   -> "45 minutes"
         """
         try:
-            # Validate input
-            if not iso_duration_str:
-                return "Unknown duration"
-            iso_duration_str = iso_duration_str.strip()
+            td = parse_duration(iso_duration_str)
 
-            # Match ISO-8601 duration: PT#H#M
-            match = re.fullmatch(r"PT(?:(\d+)H)?(?:(\d+)M)?", iso_duration_str)
+            total_seconds = int(td.total_seconds())
 
-            hours = int(match.group(1) or 0)
-            minutes = int(match.group(2) or 0)
+            hours, remainder = divmod(total_seconds, 3600)
+            minutes, _ = divmod(remainder, 60)
 
-            # Handle PT (no hours/minutes specified)
-            if hours == 0 and minutes == 0:
-                return "0 minutes"
             parts = []
             if hours:
                 parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
             if minutes:
                 parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
 
-            return " ".join(parts)
-
+            return " ".join(parts) if parts else "0 minutes"
         except (ValueError, TypeError):
             return "Invalid duration"
         except Exception:
-            # Optional: log the exception here
+            # TODO: Add logging here (e.g., logging.exception("Duration parsing failed"))
             return "Unknown duration"
 
 

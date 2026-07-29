@@ -6,38 +6,51 @@ from typing import List, Dict
 
 from backend.agent.models import FlightOption, TravelPlan
 
+def format_departure_time(departure_str: str) -> str:
+    if not departure_str or not isinstance(departure_str, str):
+        return "Unknown"
+    
+    try:
+        dt = datetime.fromisoformat(departure_str)
+        return dt.strftime("%H:%M")
+    except (ValueError, TypeError):
+        return "Unknown"
+    
 
-def parse_and_prepare_offers(response_data: dict) -> List[Dict]:
-    """Parse Amadeus flight search response into sortable format."""
-    if 'data' not in response_data or not response_data['data']:
-        return []
+async def location_to_airport_code(location_name: str) -> str:
+    """Convert location name to IATA airport code using LLM."""
+    if not location_name:
+        return ""
 
-    prepared_offers = []
-    carriers = response_data.get('dictionaries', {}).get('carriers', {})
+    if len(location_name) == 3 and location_name.isalpha() and location_name.isupper():
+        return location_name
 
-    for offer in response_data['data']:
-        try:
-            price_float = float(offer['price']['total'])
+    conversion_prompt = f"""
+    Convert this location to the main international airport IATA code.
 
-            itinerary = offer['itineraries'][0]
-            first_segment = itinerary['segments'][0]
-            last_segment = itinerary['segments'][-1]
+    Examples:
+    - "Seoul" -> "ICN"
+    - "Tokyo" -> "NRT"
+    - "Paris" -> "CDG"
+    - "New York" -> "JFK"
+    - "London" -> "LHR"
 
-            option_obj = FlightOption(
-                airline=carriers.get(first_segment['carrierCode'], first_segment['carrierCode']),
-                price=f"{offer['price']['total']} {offer['price']['currency']}",
-                departure_time=first_segment['departure']['at'],
-                arrival_time=last_segment['arrival']['at'],
-                duration=itinerary.get('duration'),
-            )
+    Location: "{location_name}"
+    IATA Code:
+    """
 
-            prepared_offers.append({"price_numeric": price_float, "option_object": option_obj})
-        except (ValueError, KeyError, IndexError, TypeError) as e:
-            print(f"Skipping malformed flight offer: {e}")
-            continue
+    try:
+        response = await llm.ainvoke(conversion_prompt)
+        airport_code = response.content.strip().upper()
 
-    return prepared_offers
+        if len(airport_code) == 3 and airport_code.isalpha():
+            return airport_code
+        codes = re.findall(r'[A-Z]{3}', response.content.upper())
+        return codes[0] if codes else location_name
 
+    except Exception as e:
+        print(f"Location conversion failed for {location_name}: {e}")
+        return location_name
 
 def find_closest_flight(offers: List[Dict], target_time_str: str) -> List[Dict]:
     """Sort flights by proximity to target departure time."""

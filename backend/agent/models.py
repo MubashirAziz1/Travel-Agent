@@ -1,6 +1,6 @@
 """Travel package and plan models."""
 
-from typing import List, Optional, Literal
+from typing import Optional, Literal
 from pydantic import BaseModel, Field
 
 

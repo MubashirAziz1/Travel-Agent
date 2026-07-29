@@ -12,7 +12,7 @@ async def main():
         response = await client.search_offers(
             origin="LHE",
             destination="DXB",
-            departure_date="2026-07-16",
+            departure_date="2026-07-30",
         )
 
         print("Success!")
