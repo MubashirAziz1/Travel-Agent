@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from backend.config import DuffelSettings
 from ..services.duffel.client import DuffelClient
 from ..agent.models import FlightOption
-from ..utils import find_closest_flight, location_to_airport_code
+from ..utils import get_representative_options, location_to_airport_code
 from backend.config import llm
 
 logger = logging.getLogger(__name__)
@@ -32,8 +32,8 @@ async def search_flights(
     departureDate: str,
     returnDate: Optional[str] = None,
     adults: int = 1,
-    travelClass: Optional[str] = None,
     departureTime: Optional[str] = None,
+    #travelClass: Optional[str] = None,
 ) -> List[FlightOption]:
     """Search for flight offers using Duffel API."""
     print(f"Flight search: {originLocationCode} -> {destinationLocationCode}")
@@ -75,8 +75,7 @@ async def search_flights(
             'max_connections': 1,
         }
 
-        p
-        top_3_offers = [item['option_object'] for item in final_sorted_offers[:3]]rint(f"Calling Duffel with params: {search_params}")
+        print(f"Calling Duffel with params: {search_params}")
 
         all_offers = await client.search_offers(**search_params)
 
@@ -95,13 +94,15 @@ async def search_flights(
         #     window_start = time_windows[departureTime.lower()].split("-")[0]
         #     final_sorted_offers = find_closest_flight(final_sorted_offers, window_start)
 
-        if departureTime and ":" in departureTime:
-            print(f"Re-sorting by proximity to {departureTime}")
-            final_sorted_offers = find_closest_flight(final_sorted_offers, departureTime)
-        top_3_offers = [item['option_object'] for item in final_sorted_offers[:3]]
+        # if departureTime and ":" in departureTime:
+        #     print(f"Re-sorting by proximity to {departureTime}")
+        #     final_sorted_offers = find_closest_flight(final_sorted_offers, departureTime)
 
-        print(f"Returning top 3 of {len(all_offers)} flight options")
-        return top_3_offers
+        # Creates the List of offers from cheapest to priciest. 
+        min_to_max_offers = get_representative_options(final_sorted_offers, 'price')
+
+        print(f"Returning  {len(all_offers)} cheapest to priciest offers from the flight tool")
+        return min_to_max_offers
 
     except Exception as e:
         print(f"Flight search error: {e}")

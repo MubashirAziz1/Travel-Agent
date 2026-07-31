@@ -52,45 +52,50 @@ async def location_to_airport_code(location_name: str) -> str:
         print(f"Location conversion failed for {location_name}: {e}")
         return location_name
 
-def find_closest_flight(offers: List[Dict], target_time_str: str) -> List[Dict]:
-    """Sort flights by proximity to target departure time."""
-    try:
-        target_hour = int(target_time_str.split(':')[0])
-    except (ValueError, IndexError):
-        print(f"Invalid target time: {target_time_str}")
-        return offers
+# def find_closest_flight(offers: List[Dict], target_time_str: str) -> List[Dict]:
+#     """Sort flights by proximity to target departure time."""
+#     try:
+#         target_hour = int(target_time_str.split(':')[0])
+#     except (ValueError, IndexError):
+#         print(f"Invalid target time: {target_time_str}")
+#         return offers
 
-    def get_time_difference(prepared_offer):
-        try:
-            departure_dt = datetime.fromisoformat(prepared_offer['option_object'].departure_time)
-            return abs(departure_dt.hour - target_hour)
-        except (ValueError, TypeError):
-            return float('inf')
+#     def get_time_difference(prepared_offer):
+#         try:
+#             departure_dt = datetime.fromisoformat(prepared_offer['option_object'].departure_time)
+#             return abs(departure_dt.hour - target_hour)
+#         except (ValueError, TypeError):
+#             return float('inf')
 
-    return sorted(offers, key=get_time_difference)
+#     return sorted(offers, key=get_time_difference)
 
 
-def get_representative_options(options: List, key_attr: str, max_items: int = 7) -> List:
+def get_representative_options(prepared_offers: List[Dict], key_attr: str, max_items: int = 7) -> List:
     """Select representative sample (cheapest, mid-range, priciest)."""
-    if not options or len(options) <= max_items:
-        return options
+    if not prepared_offers or len(prepared_offers) <= max_items:
+        return [item["option_object"] for item in prepared_offers]
 
-    try:
-        if key_attr == 'price':
-            options.sort(key=lambda x: float(getattr(x, key_attr).split(' ')[0]))
-    except (ValueError, TypeError, IndexError):
-        pass
+    cheapest = [item["option_object"] for item in prepared_offers[:2]]  
 
-    cheapest = options[:2]
-    most_expensive = options[-2:]
-    mid_index = len(options) // 2
-    mid_range = options[mid_index - 1: mid_index + 2]
+    most_expensive = [item["option_object"] for item in prepared_offers[-2:]]
+
+    mid = len(prepared_offers) // 2
+    mid_range = [
+        item["option_object"]
+        for item in prepared_offers[mid - 1: mid + 2]
+    ]
 
     representative_sample = cheapest + mid_range + most_expensive
     seen = set()
     unique_sample = []
     for item in representative_sample:
-        val = getattr(item, key_attr)
+        try:
+            # Extract numeric price (e.g., "250 USD" -> 250.0)
+            val = float(getattr(item, key_attr).split()[0])
+        except (ValueError, AttributeError, IndexError):
+            # Fallback to original attribute if parsing fails
+            val = getattr(item, key_attr)
+
         if val not in seen:
             unique_sample.append(item)
             seen.add(val)

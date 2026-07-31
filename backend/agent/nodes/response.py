@@ -6,9 +6,8 @@ from langchain_core.messages import AIMessage, ToolMessage
 
 from backend.config import llm
 from ..models import FlightOption, HotelOption, TravelPlan, TravelPackage
-from ..tools.flights import search_flights
-from ..tools.hotels import search_and_compare_hotels
-from ..tools.crm import send_to_hubspot
+from ...tools.flight import search_flights
+#from ..tools.hotels import search_and_compare_hotels
 from backend.utils import get_representative_options
 from ..state import TravelAgentState
 
@@ -72,7 +71,6 @@ async def response(state: TravelAgentState) -> dict:
 - Highlight the "Balanced" package as recommended
 - End with clear call to action
 """
-        hubspot_recommendations = {"packages": [p.model_dump() for p in packages]}
     else:
         print("Preparing response with search results")
         has_results = any(all_options.values())
@@ -89,28 +87,15 @@ async def response(state: TravelAgentState) -> dict:
 
 Organize and present options in a user-friendly format.
 """
-            hubspot_recommendations = tool_results_for_prompt
         else:
             synthesis_prompt = """You are an AI travel assistant.
 Apologize that no options were found and offer to help refine the search."""
-            hubspot_recommendations = {"error": "No results found"}
 
     try:
         final_response = await llm.ainvoke(synthesis_prompt)
     except Exception as e:
         print(f"Response generation failed: {e}")
         final_response = AIMessage(content="I apologize, but I encountered an issue generating your recommendations. Please try again.")
-
-    if state.get('customer_info') and travel_plan:
-        try:
-            await send_to_hubspot.ainvoke({
-                'customer_info': state['customer_info'],
-                'travel_plan': travel_plan,
-                'recommendations': hubspot_recommendations,
-                'original_request': state.get('original_request', ''),
-            })
-        except Exception as e:
-            print(f"CRM integration warning: {e}")
 
     return {
         "messages": [final_response],
@@ -126,7 +111,6 @@ async def generate_travel_packages(trip_plan: TravelPlan, all_options: Dict) -> 
 
     sorted_flights = sorted(all_options.get('flights', []), key=lambda x: float(x.price.split(' ')[0]))
     sorted_hotels = sorted(all_options.get('hotels', []), key=lambda x: float(x.price.split(' ')[0]))
-    sorted_activities = sorted(all_options.get('activities', []), key=lambda x: float(x.price.split(' ')[0]))
 
     if not sorted_flights or not sorted_hotels:
         print("Insufficient options for package generation")
@@ -134,7 +118,6 @@ async def generate_travel_packages(trip_plan: TravelPlan, all_options: Dict) -> 
 
     rep_flights = get_representative_options(sorted_flights, 'price')
     rep_hotels = get_representative_options(sorted_hotels, 'name')
-    rep_activities = get_representative_options(sorted_activities, 'name', max_items=10)
 
     generation_prompt = f"""
     You are an expert travel consultant. Create up to 3 compelling travel packages
@@ -148,7 +131,6 @@ async def generate_travel_packages(trip_plan: TravelPlan, all_options: Dict) -> 
     **AVAILABLE OPTIONS (choose from these lists):**
     - Flights: {json.dumps([f.model_dump() for f in rep_flights])}
     - Hotels: {json.dumps([h.model_dump() for h in rep_hotels])}
-    - Activities: {json.dumps([a.model_dump() for a in rep_activities])}
 
     **YOUR TASK:**
     1. Check if basic trip is possible within budget
@@ -158,8 +140,7 @@ async def generate_travel_packages(trip_plan: TravelPlan, all_options: Dict) -> 
     3. Each package must contain:
        - EXACTLY ONE flight
        - EXACTLY ONE hotel
-       - 0 to 2 activities
-    4. Calculate `total_cost` = flight + (hotel x {trip_plan.duration_days} nights) + activities
+    4. Calculate `total_cost` = flight + (hotel x {trip_plan.duration_days} nights)
     5. Calculate `budget_comment` based on difference from total budget
     6. Create creative `name` for each package
 

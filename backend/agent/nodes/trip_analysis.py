@@ -68,6 +68,8 @@ async def trip_analysis(state: TravelAgentState) -> dict:
 
         response = await llm.ainvoke(analysis_prompt)
 
+
+        #Confirm it before using it with Gemini Plyaground
         content = response.content.strip()
         if content.startswith('```json'):
             content = content[7:]

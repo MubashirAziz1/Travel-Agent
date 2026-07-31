@@ -10,6 +10,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 
 from backend.utils import calculate_default_dates
 from ..state import TravelAgentState
+from ...tools.flight import search_flights
 
 
 async def plan_execute(state: TravelAgentState) -> Dict:
@@ -58,14 +59,14 @@ async def plan_execute(state: TravelAgentState) -> Dict:
             })
             tasks_and_names.append((task, "search_flights"))
 
-        if travel_plan.user_intent in ["full_plan", "hotels_only"] and travel_plan.destination:
-            task = search_and_compare_hotels.ainvoke({
-                "city_code": travel_plan.destination,
-                "check_in_date": departure_date,
-                "check_out_date": return_date,
-                "adults": travel_plan.adults,
-            })
-            tasks_and_names.append((task, "search_and_compare_hotels"))
+        # if travel_plan.user_intent in ["full_plan", "hotels_only"] and travel_plan.destination:
+        #     task = search_and_compare_hotels.ainvoke({
+        #         "city_code": travel_plan.destination,
+        #         "check_in_date": departure_date,
+        #         "check_out_date": return_date,
+        #         "adults": travel_plan.adults,
+        #     })
+        #     tasks_and_names.append((task, "search_and_compare_hotels"))
 
         if not tasks_and_names:
             print("No tools to call")
