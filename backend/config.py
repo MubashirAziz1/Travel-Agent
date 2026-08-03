@@ -10,6 +10,8 @@ from typing import List, Literal, Optional
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+load_dotenv()
+
 PROJECT_ROOT = Path(__file__).parent
 ENV_FILE_PATH = PROJECT_ROOT / ".env"
 
@@ -37,14 +39,14 @@ class DuffelSettings(BaseConfigSettings):
 
 
    
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
-if not all([GOOGLE_API_KEY]):
+if not all([GEMINI_API_KEY]):
     raise ValueError("Required API keys missing: GOOGLE_API_KEY")
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
+    model="gemini-3.1-flash-lite",
     temperature=0,
-    google_api_key=GOOGLE_API_KEY,
+    google_api_key=GEMINI_API_KEY,
 )

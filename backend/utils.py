@@ -2,7 +2,8 @@
 
 from datetime import datetime, timedelta
 from typing import List, Dict
-
+from backend.config import llm
+import re
 
 from backend.agent.models import FlightOption, TravelPlan
 
@@ -36,18 +37,15 @@ async def location_to_airport_code(location_name: str) -> str:
     - "London" -> "LHR"
 
     Location: "{location_name}"
-    IATA Code:
+    
+    Output only the three-letter IATA airport code. Do not include any additional text.
     """
 
     try:
         response = await llm.ainvoke(conversion_prompt)
-        airport_code = response.content.strip().upper()
+        airport_code = response.content[0]["text"]
 
-        if len(airport_code) == 3 and airport_code.isalpha():
-            return airport_code
-        codes = re.findall(r'[A-Z]{3}', response.content.upper())
-        return codes[0] if codes else location_name
-
+        return airport_code
     except Exception as e:
         print(f"Location conversion failed for {location_name}: {e}")
         return location_name
@@ -126,4 +124,6 @@ def calculate_default_dates(travel_plan: TravelPlan) -> tuple:
             return_date = default_checkout.strftime('%Y-%m-%d')
 
     return departure_date, return_date
+
+
 

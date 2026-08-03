@@ -36,8 +36,8 @@ async def response(state: TravelAgentState) -> dict:
                 parsed_data = json.loads(content)
                 if tool_name == "search_flights":
                     all_options['flights'] = [FlightOption.model_validate(f) for f in parsed_data]
-                elif tool_name == "search_and_compare_hotels":
-                    all_options['hotels'] = [HotelOption.model_validate(h) for h in parsed_data]
+                # elif tool_name == "search_and_compare_hotels":
+                #     all_options['hotels'] = [HotelOption.model_validate(h) for h in parsed_data]
         except (json.JSONDecodeError, TypeError, ValueError) as e:
             print(f"Failed to parse {tool_name}: {e}")
 
@@ -55,30 +55,28 @@ async def response(state: TravelAgentState) -> dict:
             print(f"Package generation failed: {e}")
             packages = []
 
-    synthesis_prompt = ""
-    hubspot_recommendations = {}
-
+    
     if packages:
         print(f"Preparing response with {len(packages)} packages")
         synthesis_prompt = f"""You are an AI travel assistant. Present these custom travel packages professionally.
 
-**GENERATED PACKAGES:**
-{json.dumps([p.model_dump() for p in packages], indent=2)}
+            **GENERATED PACKAGES:**
+            {json.dumps([p.model_dump() for p in packages], indent=2)}
 
-**YOUR TASK:**
-- Start with a warm greeting
-- Present ALL packages with clear details (flight, hotel, activities)
-- Highlight the "Balanced" package as recommended
-- End with clear call to action
-"""
+            **YOUR TASK:**
+            - Start with a warm greeting
+            - Present ALL packages with clear details (flight, hotel, activities)
+            - Highlight the "Balanced" package as recommended
+            - End with clear call to action
+            """
     else:
         print("Preparing response with search results")
         has_results = any(all_options.values())
 
         if has_results:
             tool_results_for_prompt = {
-                "flights": [f.model_dump() for f in all_options.get('flights', [])],
-                "hotels": [h.model_dump() for h in all_options.get('hotels', [])]
+                "flights": [f.model_dump() for f in all_options.get('flights', [])]
+                # "hotels": [h.model_dump() for h in all_options.get('hotels', [])]
                 }
             synthesis_prompt = f"""You are an AI travel assistant. Present these search results clearly.
 
@@ -103,21 +101,19 @@ Apologize that no options were found and offer to help refine the search."""
     }
 
 
+# - Hotels: {json.dumps([h.model_dump() for h in rep_hotels])}
 async def generate_travel_packages(trip_plan: TravelPlan, all_options: Dict) -> List[TravelPackage]:
     """Generate up to 3 travel packages (Budget, Balanced, Premium)."""
     if not trip_plan.total_budget or trip_plan.total_budget <= 0:
         print("Cannot generate packages without valid budget")
         return []
 
-    sorted_flights = sorted(all_options.get('flights', []), key=lambda x: float(x.price.split(' ')[0]))
-    sorted_hotels = sorted(all_options.get('hotels', []), key=lambda x: float(x.price.split(' ')[0]))
+    sorted_flights = all_options.get('flights', [])
+    #sorted_hotels = all_options.get('hotels', [])
 
-    if not sorted_flights or not sorted_hotels:
+    if not sorted_flights:  #or not sorted_hotels
         print("Insufficient options for package generation")
         return []
-
-    rep_flights = get_representative_options(sorted_flights, 'price')
-    rep_hotels = get_representative_options(sorted_hotels, 'name')
 
     generation_prompt = f"""
     You are an expert travel consultant. Create up to 3 compelling travel packages
@@ -129,8 +125,8 @@ async def generate_travel_packages(trip_plan: TravelPlan, all_options: Dict) -> 
     - Budget: ${trip_plan.total_budget}
 
     **AVAILABLE OPTIONS (choose from these lists):**
-    - Flights: {json.dumps([f.model_dump() for f in rep_flights])}
-    - Hotels: {json.dumps([h.model_dump() for h in rep_hotels])}
+    - Flights: {json.dumps([f.model_dump() for f in sorted_flights])}
+    
 
     **YOUR TASK:**
     1. Check if basic trip is possible within budget

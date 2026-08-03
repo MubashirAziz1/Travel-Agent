@@ -11,7 +11,6 @@ from backend.config import DuffelSettings
 from ..services.duffel.client import DuffelClient
 from ..agent.models import FlightOption
 from ..utils import get_representative_options, location_to_airport_code
-from backend.config import llm
 
 logger = logging.getLogger(__name__)
 
@@ -38,14 +37,16 @@ async def search_flights(
     """Search for flight offers using Duffel API."""
     print(f"Flight search: {originLocationCode} -> {destinationLocationCode}")
 
-    if not DuffelSettings or not DuffelSettings.api_key:
+    settings = DuffelSettings()
+
+    if not settings.api_key:
         return [FlightOption(
             airline="Error",
             price="N/A",
             departure_time="N/A",
-            arrival_time="Duffel client not available"
+            arrival_time="Duffel API key not configured"
         )]
-    
+
     try:
         origin_task = location_to_airport_code(originLocationCode)
         destination_task = location_to_airport_code(destinationLocationCode)
@@ -58,20 +59,21 @@ async def search_flights(
     
     
     try:
-        client = DuffelClient(settings=DuffelSettings)
+        settings=DuffelSettings()
+        client = DuffelClient(settings)
 
         # # Map cabin class to Duffel format
-        cabin_class = None
+        #cabin_class = None
         # if travelClass and travelClass.upper() in ["ECONOMY", "PREMIUM_ECONOMY", "BUSINESS", "FIRST"]:
         #     cabin_class = travelClass.lower()
 
         search_params = {
-            'origin': actual_origin,
-            'destination': actual_destination,
+            'originLocationCode': actual_origin,
+            'destinationLocationCode': actual_destination,
             'departure_date': departureDate,
             'return_date': returnDate,
             'adults': adults,
-            'cabin_class': cabin_class,
+            #'cabin_class': cabin_class,
             'max_connections': 1,
         }
 
@@ -101,7 +103,8 @@ async def search_flights(
         # Creates the List of offers from cheapest to priciest. 
         min_to_max_offers = get_representative_options(final_sorted_offers, 'price')
 
-        print(f"Returning  {len(all_offers)} cheapest to priciest offers from the flight tool")
+        print(f"Returning  {len(min_to_max_offers)} cheapest to priciest among the total of {len(all_offers)} offers from the flight tool")
+
         return min_to_max_offers
 
     except Exception as e:

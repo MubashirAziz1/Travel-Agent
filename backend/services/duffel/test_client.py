@@ -10,9 +10,9 @@ async def main():
 
     try:
         response = await client.search_offers(
-            origin="LHE",
-            destination="DXB",
-            departure_date="2026-07-30",
+            originLocationCode="JFK",
+            destinationLocationCode="IAT",
+            departure_date="2026-08-04",
         )
 
         print("Success!")

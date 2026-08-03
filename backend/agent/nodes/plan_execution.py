@@ -31,26 +31,13 @@ async def plan_execute(state: TravelAgentState) -> Dict:
         print(f"Phase 1: Preparing tools (intent: {travel_plan.user_intent})")
 
         tasks_and_names = []
-        default_checkin, default_checkout = calculate_default_dates(travel_plan)
-
-        departure_date = travel_plan.departure_date or default_checkin
-        return_date = travel_plan.return_date or default_checkout
-
-        try:
-            datetime.strptime(departure_date, '%Y-%m-%d')
-            if return_date:
-                datetime.strptime(return_date, '%Y-%m-%d')
-        except ValueError as e:
-            print(f"Invalid date, using defaults: {e}")
-            departure_date = default_checkin
-            return_date = default_checkout
 
         if travel_plan.user_intent in ["full_plan", "flights_only"] and travel_plan.origin and travel_plan.destination:
             task = search_flights.ainvoke({
                 "originLocationCode": travel_plan.origin,
                 "destinationLocationCode": travel_plan.destination,
-                "departureDate": departure_date,
-                "returnDate": return_date,
+                "departureDate": travel_plan.departure_date ,
+                "returnDate": travel_plan.return_date,
                 "adults": travel_plan.adults,
                 "currencyCode": "USD",
                 "travelClass": travel_plan.travel_class,

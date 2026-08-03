@@ -9,7 +9,7 @@ from ..models import TravelPlan
 from ..state import TravelAgentState
 
 
-async def trip_analysis(state: TravelAgentState) -> dict:
+async def n_trip_analysis(state: TravelAgentState) -> dict:
     """First entry point: analyzes user request and creates travel plan."""
 
     print("NODE: Travel Analysis on user request")
@@ -33,53 +33,7 @@ async def trip_analysis(state: TravelAgentState) -> dict:
 
     try:
         print("Phase 1: Analyzing request")
-        analysis_prompt = f"""
-        You are a world-class travel analyst AI. Extract structured trip information
-        from the user's request and output valid JSON matching the provided schema.
-
-        **User Request:** "{user_request}"
-
-        **Today's Date:** {datetime.now().strftime('%Y-%m-%d')}
-
-        **Instructions:**
-
-        1. **Determine User Intent (`user_intent`):**
-            - "full_plan": Combination of flights and hotels
-            - "flights_only": Only asking for flights
-            - "hotels_only": Only asking for hotels
-
-        2. **Extract Core Details:**
-            - `origin`: Starting location (can be null)
-            - `destination`: Final destination (mandatory)
-            - `departure_date` & `return_date`: Calculate absolute dates in YYYY-MM-DD format
-            - `duration_days`: Calculate days between departure and return
-            - `adults`: Number of travelers (default 1)
-
-        3. **Extract Preferences:**
-            - `travel_class`: Look for "business", "first class", etc. (default "ECONOMY")
-            - `departure_time_pref` & `arrival_time_pref`: Look for time preferences
-            - `total_budget`: Extract monetary value as float
-
-        **CRITICAL: Output MUST be valid JSON matching this schema:**
-        {TravelPlan.model_json_schema()}
-
-        **JSON Output:**
-        """
-
-        response = await llm.ainvoke(analysis_prompt)
-
-
-        #Confirm it before using it with Gemini Plyaground
-        content = response.content.strip()
-        if content.startswith('```json'):
-            content = content[7:]
-        if content.endswith('```'):
-            content = content[:-3]
-        content = content.strip()
-
-        travel_plan = TravelPlan.model_validate_json(content)
-        print(f"Travel plan extracted: intent={travel_plan.user_intent}")
-
+        travel_plan = await enhanced_travel_analysis(user_request)
         if customer_info.get('budget'):
             try:
                 budget_str = customer_info['budget'].upper().replace("USD", "").replace("$", "").strip()
@@ -89,8 +43,7 @@ async def trip_analysis(state: TravelAgentState) -> dict:
                 print(f"Could not parse budget: {customer_info.get('budget')}")
 
         return {
-            "travel_plan": travel_plan,
-            "current_step": "analysis_complete",
+            "travel_plan" : travel_plan
         }
 
     except ValueError as e:
@@ -102,4 +55,59 @@ async def trip_analysis(state: TravelAgentState) -> dict:
         traceback.print_exc()
         response = AIMessage(content="I apologize, but a system error occurred. Please try again.")
         return {"messages": [response], "current_step": "complete"}
+
+
+async def enhanced_travel_analysis(user_request: str) -> TravelPlan:
+    """Extract structured trip information from a natural-language request."""
+    analysis_prompt = f"""
+    You are a world-class travel analyst AI. Extract structured trip information
+    from the user's request and output valid JSON matching the provided schema.
+
+    **User Request:** "{user_request}"
+
+    **Today's Date:** {datetime.now().strftime('%Y-%m-%d')}
+
+    **Instructions:**
+
+    1. **Determine User Intent (`user_intent`):**
+        - "full_plan": Combination of flights, hotels, or activities
+        - "flights_only": Only asking for flights
+        - "hotels_only": Only asking for hotels
+        - "activities_only": Only asking for activities
+
+    2. **Extract Core Details:**
+        - `origin`: Starting location (can be null)
+        - `destination`: Final destination (mandatory)
+        - `departure_date` & `return_date`: Calculate absolute dates in YYYY-MM-DD format
+        - `duration_days`: Calculate days between departure and return
+        - `adults`: Number of travelers (default 1)
+
+    3. **Extract Preferences:**
+        - `travel_class`: Look for "business", "first class", etc. (default "ECONOMY")
+        - `departure_time_pref` & `arrival_time_pref`: Look for time preferences
+        - `total_budget`: Extract monetary value as float
+
+    **CRITICAL: Output MUST be valid JSON matching this schema:**
+    {TravelPlan.model_json_schema()}
+
+    **JSON Output:**
+    """
+
+    try:
+        response = await llm.ainvoke(analysis_prompt)
+
+        content = response.content.strip()
+        if content.startswith('```json'):
+            content = content[7:]
+        if content.endswith('```'):
+            content = content[:-3]
+        content = content.strip()
+
+        extracted_plan = TravelPlan.model_validate_json(content)
+        print(f"Travel plan extracted: intent={extracted_plan.user_intent}")
+        return extracted_plan
+
+    except Exception as e:
+        print(f"Travel analysis failed: {e}")
+        raise ValueError(f"Could not understand the travel request: {e}")
 

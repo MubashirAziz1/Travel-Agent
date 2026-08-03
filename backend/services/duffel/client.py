@@ -48,8 +48,8 @@ class DuffelClient:
 
     async def search_offers(
         self,
-        origin: str,
-        destination: str,
+        originLocationCode: str,
+        destinationLocationCode: str,
         departure_date: str,
         return_date: Optional[str] = None,
         adults: int = 1,
@@ -72,24 +72,24 @@ class DuffelClient:
             Raw JSON response from Duffel API.
         """
 
-        if not origin:
+        if not originLocationCode:
             raise ValueError("Please add the departure city.")
-        if not destination:
+        if not destinationLocationCode:
             raise ValueError("Please add the destination city.")
         if not departure_date:
             raise ValueError("Please add the departure date to travel.")
        
         
         slices = [{
-            "origin": origin,
-            "destination": destination,
+            "origin": originLocationCode,
+            "destination": destinationLocationCode,
             "departure_date": departure_date,
         }]
 
         if return_date:
             slices.append({
-                "origin": destination,
-                "destination": origin,
+                "origin": destinationLocationCode,
+                "destination": originLocationCode,
                 "departure_date": return_date,
             })
 
@@ -114,7 +114,13 @@ class DuffelClient:
         
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(url, headers=self._get_headers(), json=payload)
-            response.raise_for_status()
+            if response.status_code >= 400:
+                try:
+                    error_body = response.json()
+                except Exception:
+                    error_body = response.text
+                logger.error(f"Duffel API error {response.status_code}: {error_body}")
+                response.raise_for_status()
             offer_list = response.json()
 
         if not offer_list.get('data', {}).get('offers'):
