@@ -94,9 +94,9 @@ async def enhanced_travel_analysis(user_request: str) -> TravelPlan:
     """
 
     try:
-        response = await llm.ainvoke(analysis_prompt)
+        response =  await llm.ainvoke(analysis_prompt)
 
-        content = response.content.strip()
+        content = response.content[0]['text']
         if content.startswith('```json'):
             content = content[7:]
         if content.endswith('```'):
@@ -111,3 +111,5 @@ async def enhanced_travel_analysis(user_request: str) -> TravelPlan:
         print(f"Travel analysis failed: {e}")
         raise ValueError(f"Could not understand the travel request: {e}")
 
+# analysis = enhanced_travel_analysis("Find me flights from New York to Paris tomorrow.")
+# print(analysis)

@@ -7,7 +7,7 @@ from ..config import llm
 from ..tools.flight import search_flights
 from .nodes.plan_execution import plan_execute
 from .nodes.response import response
-from .nodes.trip_analysis import trip_analysis
+from .nodes.trip_analysis import n_trip_analysis
 from .state import TravelAgentState
 
 tools = [
@@ -23,7 +23,7 @@ def build_enhanced_graph(checkpointer=None):
 
     workflow = StateGraph(TravelAgentState)
 
-    workflow.add_node("trip_analysis", trip_analysis)
+    workflow.add_node("trip_analysis", n_trip_analysis)
     workflow.add_node("plan_execution", plan_execute)
     workflow.add_node("response", response)
 
